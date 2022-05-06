@@ -69,6 +69,14 @@ module Metka
         unscoped.from(subquery).group(:tag_name).pluck(:tag_name, Arel.sql('COUNT(*) AS taggings_count'))
       end
 
+      base.define_singleton_method :metka_list do |*columns|
+        return [] if columns.blank?
+
+        prepared_unnest = columns.map { |column| "#{table_name}.#{column}" }.join(' || ')
+        subquery = all.select("UNNEST(#{prepared_unnest}) AS tag_name").distinct
+        unscoped.from(subquery).pluck(:tag_name)
+      end
+
       columns.each do |column|
         base.define_method(column.singularize + '_list=') do |v|
           write_attribute(column, parser.call(v).to_a)
@@ -81,6 +89,10 @@ module Metka
 
         base.define_singleton_method :"#{column.singularize}_cloud" do
           metka_cloud(column)
+        end
+
+        base.define_singleton_method :"#{column.singularize}_list" do
+          metka_list(column)
         end
       end
     end
