@@ -60,20 +60,23 @@ module Metka
         end
       end
 
-      base.define_singleton_method :metka_cloud do |*columns|
+      base.define_singleton_method :metka_cloud do |*columns, &block|
         return [] if columns.blank?
 
         prepared_unnest = columns.map { |column| "#{table_name}.#{column}" }.join(' || ')
         subquery = all.select("UNNEST(#{prepared_unnest}) AS tag_name")
+        subquery = subquery.instance_eval(&block) if block
 
         unscoped.from(subquery).group(:tag_name).pluck(:tag_name, Arel.sql('COUNT(*) AS taggings_count'))
       end
 
-      base.define_singleton_method :metka_list do |*columns|
+      base.define_singleton_method :metka_list do |*columns, &block|
         return [] if columns.blank?
 
         prepared_unnest = columns.map { |column| "#{table_name}.#{column}" }.join(' || ')
         subquery = all.select("UNNEST(#{prepared_unnest}) AS tag_name").distinct
+        subquery = subquery.instance_eval(&block) if block
+
         unscoped.from(subquery).pluck(:tag_name)
       end
 
@@ -87,12 +90,12 @@ module Metka
           parser.call(send(column))
         end
 
-        base.define_singleton_method :"#{column.singularize}_cloud" do
-          metka_cloud(column)
+        base.define_singleton_method :"#{column.singularize}_cloud" do |&block|
+          metka_cloud(column, &block)
         end
 
-        base.define_singleton_method :"#{column.singularize}_list" do
-          metka_list(column)
+        base.define_singleton_method :"#{column.singularize}_list" do |&block|
+          metka_list(column, &block)
         end
       end
     end
