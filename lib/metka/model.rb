@@ -97,6 +97,22 @@ module Metka
         base.define_singleton_method :"#{column.singularize}_list" do |&block|
           metka_list(column, &block)
         end
+
+        base.define_singleton_method :"#{column.singularize}_search" do |search_term, &block|
+          t = search_term.try(:split, ' ') || []
+
+          prepared_unnest = "#{table_name}.#{column}"
+          subquery = all.order(:tag_name).select("UNNEST(#{prepared_unnest}) AS tag_name").distinct
+          subquery = subquery.instance_eval(&block) if block
+
+          q = unscoped.from(subquery).limit(25)
+
+          t.each_with_index do |term, index|
+            q = q.where("tag_name ILIKE ?", "%#{term}%") if term
+          end
+
+          q.pluck(:tag_name)
+        end
       end
     end
   end
