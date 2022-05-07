@@ -83,7 +83,7 @@ module Metka
       columns.each do |column|
         base.define_method(column.singularize + '_list=') do |v|
           write_attribute(column, parser.call(v).to_a)
-          write_attribute(column, nil) if send(column).empty?
+          write_attribute(column, []) if send(column).empty?
         end
 
         base.define_method(column.singularize + '_list') do
@@ -108,7 +108,7 @@ module Metka
           q = unscoped.from(subquery).limit(25)
 
           t.each_with_index do |term, index|
-            q = q.where("tag_name ILIKE ?", "%#{term}%") if term
+            q = q.where("tag_name LIKE ?", "%#{term}%") if term
           end
 
           q.pluck(:tag_name)
